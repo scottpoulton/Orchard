@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  broker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # REQUIRED: set a long random secret
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      # REQUIRED in production: set to your public domain
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: file:/data/orchard.db
+      PORT: "3001"
+    volumes:
+      # Persist SQLite database across container restarts
+      - orchard_data:/data
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - broker
+
+volumes:
+  orchard_data:
+  caddy_data:
+  caddy_config:

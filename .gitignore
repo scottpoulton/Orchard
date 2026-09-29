@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production & Compiled Binaries
+build/
+dist/
+release/
+**/release/
+*.exe
+*.dmg
+*.app
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment Variables & Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# OS / Editor specific
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local Databases
+*.db
+*.db-journal
+
+# AI / Temp Tools
+repomix-output*.xml

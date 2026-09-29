@@ -1,0 +1,54 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "The Orchard desktop client",
+  "type": "module",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "electron": "cross-env NODE_ENV=development electron .",
+    "start:both": "concurrently \"npm:dev\" \"npm:electron\"",
+    "start": "cross-env NODE_ENV=development electron .",
+    "build": "vite build",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac dmg --publish never",
+    "dist:win": "electron-builder --win nsis --publish never",
+    "clean": "rimraf dist release",
+    "test": "node ../shared/test-protocol.cjs",
+    "test:protocol": "node ../shared/test-protocol.cjs"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron": "^39.1.1",
+    "electron-builder": "^24.13.3",
+    "vite": "^7.1.12"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "socket.io-client": "^4.8.1"
+  },
+  "build": {
+    "appId": "com.orchard.client",
+    "productName": "Orchard",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}

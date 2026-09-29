@@ -1,0 +1,183 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // This must say "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      String   @default("user")   // "user" | "admin"
+  enabled   Boolean  @default(true)
+  recoveryCodeHash      String?
+  recoveryCodeUpdatedAt DateTime?
+  createdAt DateTime @default(now())
+
+  // Buddy system (self-referencing many-to-many)
+  buddies          Buddy[]        @relation("BuddyOwner")
+  buddyOf          Buddy[]        @relation("BuddyTarget")
+
+  // Bidirectional buddy requests
+  sentRequests     BuddyRequest[] @relation("BuddyRequestFrom")
+  receivedRequests BuddyRequest[] @relation("BuddyRequestTo")
+
+  // Audit log
+  auditActions     AuditLog[]     @relation("AuditUser")
+  auditTargets     AuditLog[]     @relation("AuditTarget")
+
+  // Messaging
+  sentMessages     Message[]      @relation("MessageSender")
+  receivedMessages Message[]      @relation("MessageRecipient")
+
+  // Group spaces
+  ownedSpaces      Space[]        @relation("SpaceOwner")
+  spaceMemberships SpaceMember[]
+  spaceJoinRequests SpaceJoinRequest[]
+  roomMessages     SpaceRoomMessage[]
+}
+
+model Buddy {
+  id        Int      @id @default(autoincrement())
+  userId    Int      // User who added the buddy
+  buddyId   Int      // User who was added as buddy
+  createdAt DateTime @default(now())
+
+  user      User     @relation("BuddyOwner", fields: [userId], references: [id], onDelete: Cascade)
+  buddy     User     @relation("BuddyTarget", fields: [buddyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, buddyId])
+  @@index([userId])
+  @@index([buddyId])
+}
+
+// Pending bidirectional buddy requests
+model BuddyRequest {
+  id        String   @id @default(uuid())
+  fromId    Int
+  toId      Int
+  createdAt DateTime @default(now())
+
+  from      User     @relation("BuddyRequestFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  to        User     @relation("BuddyRequestTo",   fields: [toId],   references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
+  @@index([toId])
+}
+
+// Persistent audit log for security-relevant actions
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  action       String
+  userId       Int?
+  targetUserId Int?
+  detail       String?
+  createdAt    DateTime @default(now())
+
+  user         User?    @relation("AuditUser",   fields: [userId],       references: [id], onDelete: SetNull)
+  targetUser   User?    @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// 1:1 messages between users
+model Message {
+  id          Int      @id @default(autoincrement())
+  senderId    Int
+  recipientId Int
+  body        String
+  createdAt   DateTime @default(now())
+
+  sender      User     @relation("MessageSender",    fields: [senderId],    references: [id], onDelete: Cascade)
+  recipient   User     @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId])
+  @@index([recipientId, createdAt])
+}
+
+// Group file-sharing spaces
+model Space {
+  id        String        @id @default(uuid())
+  name      String
+  ownerId   Int
+  createdAt DateTime      @default(now())
+
+  owner     User          @relation("SpaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members   SpaceMember[]
+  invites   SpaceInvite[]
+  joinRequests SpaceJoinRequest[]
+  roomMessages SpaceRoomMessage[]
+
+  @@index([ownerId])
+}
+
+model SpaceMember {
+  spaceId   String
+  userId    Int
+  role      String   @default("member") // "owner" | "member"
+  joinedAt  DateTime @default(now())
+
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId],  references: [id], onDelete: Cascade)
+
+  @@id([spaceId, userId])
+  @@unique([spaceId, userId])
+}
+
+model SpaceInvite {
+  id          String   @id @default(uuid())
+  spaceId      String
+  code         String   @unique
+  createdById  Int
+  maxUses      Int?
+  uses         Int      @default(0)
+  revoked      Boolean  @default(false)
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  space        Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([spaceId])
+  @@index([code])
+}
+
+model SpaceJoinRequest {
+  id           String   @id @default(uuid())
+  spaceId      String
+  requesterId  Int
+  status       String   @default("pending") // "pending" | "approved" | "rejected"
+  reviewedById Int?
+  createdAt    DateTime @default(now())
+  reviewedAt   DateTime?
+
+  space        Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  requester    User     @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@unique([spaceId, requesterId])
+  @@index([spaceId, status])
+  @@index([requesterId, status])
+}
+
+model SpaceRoomMessage {
+  id        String   @id @default(uuid())
+  spaceId   String
+  senderId  Int
+  body      String
+  createdAt DateTime @default(now())
+
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([spaceId, createdAt])
+  @@index([senderId, createdAt])
+}

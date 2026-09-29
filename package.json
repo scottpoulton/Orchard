@@ -1,0 +1,16 @@
+{
+  "name": "orchard",
+  "private": true,
+  "scripts": {
+    "bootstrap": "npm ci --prefix packages/server && npm ci --prefix packages/client && npm run prisma:bootstrap",
+    "prisma:bootstrap": "node ./scripts/prisma-bootstrap.cjs",
+    "prisma:generate": "node ./scripts/prisma-bootstrap.cjs --generate-only",
+    "prisma:migrate": "node ./scripts/prisma-bootstrap.cjs --migrate-only",
+    "start:server": "npm --prefix packages/server run start",
+    "start:client": "npm --prefix packages/client run start:both",
+    "test": "npm run smoke:test",
+    "smoke:test": "npm --prefix packages/client test; client_status=$?; npm --prefix packages/server test; server_status=$?; test $client_status -eq 0 -a $server_status -eq 0",
+    "smoke:test:client": "npm --prefix packages/client test",
+    "smoke:test:server": "npm --prefix packages/server test"
+  }
+}
